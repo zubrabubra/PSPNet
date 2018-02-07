@@ -27,7 +27,7 @@ def make_df(train_path='../../data/stage1_train/', test_path='../../data/stage1_
     train_ids = next(os.walk(train_path))[1]
     test_ids = next(os.walk(test_path))[1]
     X_train = np.zeros((len(train_ids), img_size, img_size, 3), dtype=np.uint8)
-    Y_train = np.zeros((len(train_ids), img_size, img_size, 1), dtype=np.bool)
+    Y_train = np.zeros((len(train_ids), img_size * img_size, 1), dtype=np.bool)
     print('=== call train ===')
     for i, id_ in tqdm(enumerate(train_ids)):
         path = train_path + id_
@@ -40,7 +40,10 @@ def make_df(train_path='../../data/stage1_train/', test_path='../../data/stage1_
             mask_ = cv2.resize(mask_, (img_size, img_size))
             mask_ = mask_[:, :, np.newaxis]
             mask = np.maximum(mask, mask_)
-        Y_train[i] = img_to_array(mask)
+        #print(mask.shape)
+        #print(mask.reshape(img_size * img_size, 1).shape)
+        #print(img_to_array(mask.reshape(img_size * img_size, 1)).shape)
+        Y_train[i] = mask.reshape(img_size * img_size, 1)
     X_test = np.zeros((len(test_ids), img_size, img_size, 3), dtype=np.uint8)
     sizes_test = []
     print('=== call test ===')
@@ -82,6 +85,20 @@ def generator(xtr, xval, ytr, yval, batch_size):
     val_generator = zip(image_generator_val, mask_generator_val)
 
     return train_generator, val_generator
+
+
+def ff( x, y, bs ):
+   rs = []
+   cs = []
+   q = 0
+   while True:
+     imgs = []
+     lbls = []
+     for i in range( bs ):
+         imgs.append( x[q] )
+         lbls.append( y[q] )
+         q = ( q + 1 ) % len(x)
+     yield np.array(imgs), np.array(lbls)
 
 if __name__ == "__main__":
     # command line argments
@@ -181,7 +198,7 @@ if __name__ == "__main__":
 
         X_train, Y_train, X_test, sizes_test = make_df()
         xtr, xval, ytr, yval = train_test_split(X_train, Y_train, test_size=0.1, random_state=7)
-        train_gen, val_gen = generator(xtr, xval, ytr, yval, batch_size)
+        #train_gen, val_gen = generator(xtr, xval, ytr, yval, batch_size)
 
         # set model
         pspnet = PSPNet50(input_shape=args.input_shape,
@@ -198,10 +215,10 @@ if __name__ == "__main__":
                 metrics=["accuracy"])
 
         # fit with genarater
-        pspnet.fit_generator(generator=zip(xtr, ytr),
+        pspnet.fit_generator(generator=ff(xtr, ytr, batch_size),
                 steps_per_epoch=args.epoch_steps,
                 epochs=args.n_epochs,
-                validation_data=zip(xval, yval),
+                validation_data=ff(xval, yval, batch_size),
                 validation_steps=args.val_steps,
                 callbacks=[cp_cb, es_cb, tb_cb])
 
@@ -211,9 +228,4 @@ if __name__ == "__main__":
     print("save json model done...")
 
 
-def ff( x, y, bs ):
-   rs = []
-   for i in range(len(x)):
-     for j in range(bs):
-   return 0       
 
