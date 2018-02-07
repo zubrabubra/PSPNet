@@ -21,7 +21,7 @@ train_path='../../data/stage1_train/'
 test_path='../../data/stage1_test/'
 
 # for generator
-batch_size = 2
+batch_size = 32
 
 def make_df(train_path='../../data/stage1_train/', test_path='../../data/stage1_test/', img_size=256):
     train_ids = next(os.walk(train_path))[1]
@@ -215,5 +215,5 @@ def ff( x, y, bs ):
    rs = []
    for i in range(len(x)):
      for j in range(bs):
-       
+   return 0       
 
